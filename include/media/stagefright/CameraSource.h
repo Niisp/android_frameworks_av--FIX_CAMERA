@@ -1,4 +1,9 @@
 /*
+* Copyright (C) 2014 MediaTek Inc.
+* Modification based on code covered by the mentioned copyright
+* and/or permission notice(s).
+*/
+/*
  * Copyright (C) 2009 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,14 +31,6 @@
 #include <utils/List.h>
 #include <utils/RefBase.h>
 #include <utils/String16.h>
-
-#include <media/stagefright/ExtendedStats.h>
-#define RECORDER_STATS(func, ...) \
-    do { \
-        if(mRecorderExtendedStats != NULL) { \
-            mRecorderExtendedStats->func(__VA_ARGS__);} \
-    } \
-    while(0)
 
 namespace android {
 
@@ -96,7 +93,6 @@ public:
     virtual ~CameraSource();
 
     virtual status_t start(MetaData *params = NULL);
-    virtual status_t pause();
     virtual status_t stop() { return reset(); }
     virtual status_t read(
             MediaBuffer **buffer, const ReadOptions *options = NULL);
@@ -129,6 +125,7 @@ public:
     bool isMetaDataStoredInVideoBuffers() const;
 
     virtual void signalBufferReturned(MediaBuffer* buffer);
+
 
 protected:
     class ProxyListener: public BnCameraRecordingProxyListener {
@@ -172,11 +169,6 @@ protected:
     bool mStarted;
     int32_t mNumFramesEncoded;
 
-    bool mRecPause;
-    int64_t  mPauseAdjTimeUs;
-    int64_t  mPauseStartTimeUs;
-    int64_t  mPauseEndTimeUs;
-
     // Time between capture of two frames.
     int64_t mTimeBetweenFrameCaptureUs;
 
@@ -185,7 +177,6 @@ protected:
                  Size videoSize, int32_t frameRate,
                  const sp<IGraphicBufferProducer>& surface,
                  bool storeMetaDataInVideoBuffers);
-
     virtual status_t startCameraRecording();
     virtual void releaseRecordingFrame(const sp<IMemory>& frame);
 
@@ -210,7 +201,6 @@ private:
     List<sp<IMemory> > mFramesReceived;
     List<sp<IMemory> > mFramesBeingEncoded;
     List<int64_t> mFrameTimes;
-    sp<RecorderExtendedStats> mRecorderExtendedStats;
 
     int64_t mFirstFrameTimeUs;
     int32_t mNumFramesDropped;
@@ -254,6 +244,28 @@ private:
 
     CameraSource(const CameraSource &);
     CameraSource &operator=(const CameraSource &);
+
+#ifdef MTK_AOSP_ENHANCEMENT
+/******************************************************************************
+*  Added members
+*******************************************************************************/
+	float mDropRate;
+	int32_t mNumRemainFrameReceived;
+	int32_t mLastNumFramesReceived;
+
+	bool mNeedUnlock;
+	int64_t mStartTimeOffsetUs;
+	int32_t mCodecConfigReceived; // for slowmotion directlink, show if configdata received
+
+/******************************************************************************
+*  Added Operations
+*******************************************************************************/
+private:
+public:
+	status_t setFrameRate(int32_t fps);  // use read options instead
+private:
+	void preInit();
+#endif // #ifdef MTK_AOSP_ENHANCEMENT
 };
 
 }  // namespace android
